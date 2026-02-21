@@ -1,0 +1,1 @@
+//! SDK error types.
