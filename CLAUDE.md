@@ -9,6 +9,13 @@ cargo test -p apiari-claude-sdk           # Unit tests (6 + 3 doctests)
 cargo test -p apiari-claude-sdk -- --ignored  # Integration tests (requires live `claude` CLI)
 ```
 
+## Git Workflow
+
+- You are working in a swarm worktree on a `swarm/*` branch. Stay on this branch.
+- NEVER push to or merge into `main` directly.
+- When done, create a PR from your branch. Swarm will handle merging.
+- NEVER run `git push origin main` or `git checkout main`.
+
 ## Architecture
 
 ```
