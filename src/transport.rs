@@ -140,11 +140,13 @@ impl Transport {
 
             debug!(line = %line, "stdout <-");
 
-            return serde_json::from_str(line).map(Some).map_err(|e| SdkError::InvalidJson {
-                message: e.to_string(),
-                line: line.to_owned(),
-                source: e,
-            });
+            return serde_json::from_str(line)
+                .map(Some)
+                .map_err(|e| SdkError::InvalidJson {
+                    message: e.to_string(),
+                    line: line.to_owned(),
+                    source: e,
+                });
         }
     }
 
@@ -156,11 +158,13 @@ impl Transport {
             return Ok(None);
         };
 
-        serde_json::from_value(value.clone()).map(Some).map_err(|e| SdkError::InvalidJson {
-            message: format!("failed to parse as Message: {e}"),
-            line: value.to_string(),
-            source: e,
-        })
+        serde_json::from_value(value.clone())
+            .map(Some)
+            .map_err(|e| SdkError::InvalidJson {
+                message: format!("failed to parse as Message: {e}"),
+                line: value.to_string(),
+                source: e,
+            })
     }
 
     /// Close the stdin pipe, signaling EOF to the subprocess.

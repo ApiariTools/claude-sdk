@@ -56,6 +56,6 @@ pub use session::{PermissionMode, SessionOptions};
 pub use streaming::{AssembledEvent, StreamAssembler};
 pub use tools::{ToolResult, ToolUse};
 pub use types::{
-    AssistantMessage, AssistantMessageContent, ContentBlock, InputMessage, Message,
-    RateLimitEvent, ResultMessage, StreamEvent, SystemMessage, UserMessage,
+    AssistantMessage, AssistantMessageContent, ContentBlock, InputMessage, Message, RateLimitEvent,
+    ResultMessage, StreamEvent, SystemMessage, UserMessage,
 };

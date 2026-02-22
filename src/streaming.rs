@@ -118,9 +118,7 @@ impl StreamAssembler {
                     self.blocks.resize_with(idx + 1, || None);
                 }
                 self.blocks[idx] = Some(match content_block {
-                    ContentBlockInfo::Text { text } => PartialBlock::Text {
-                        text: text.clone(),
-                    },
+                    ContentBlockInfo::Text { text } => PartialBlock::Text { text: text.clone() },
                     ContentBlockInfo::Thinking { thinking } => PartialBlock::Thinking {
                         thinking: thinking.clone(),
                     },
@@ -148,9 +146,7 @@ impl StreamAssembler {
                         }
                         (
                             PartialBlock::Thinking { thinking },
-                            Delta::ThinkingDelta {
-                                thinking: fragment,
-                            },
+                            Delta::ThinkingDelta { thinking: fragment },
                         ) => {
                             thinking.push_str(fragment);
                             events.push(AssembledEvent::ThinkingDelta {
@@ -220,9 +216,7 @@ impl StreamAssembler {
             }
 
             StreamEventPayload::MessageStop => {
-                vec![AssembledEvent::MessageComplete {
-                    stop_reason: None,
-                }]
+                vec![AssembledEvent::MessageComplete { stop_reason: None }]
             }
 
             StreamEventPayload::Unknown => vec![],

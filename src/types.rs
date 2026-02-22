@@ -464,7 +464,11 @@ impl InputMessage {
     }
 
     /// Create a tool-result user message.
-    pub fn tool_result(tool_use_id: impl Into<String>, output: impl Into<String>, is_error: bool) -> Self {
+    pub fn tool_result(
+        tool_use_id: impl Into<String>,
+        output: impl Into<String>,
+        is_error: bool,
+    ) -> Self {
         InputMessage::User {
             message: InputMessageContent {
                 role: "user".to_owned(),

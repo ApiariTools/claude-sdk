@@ -165,41 +165,39 @@ async fn sdk_round_trip() {
     let timeout = tokio::time::timeout(std::time::Duration::from_secs(120), async {
         loop {
             match session.next_event().await {
-                Ok(Some(event)) => {
-                    match &event {
-                        Event::System(sys) => {
-                            eprintln!("  -> Got system message (subtype={})", sys.subtype);
-                            got_system = true;
-                        }
-                        Event::User(_) => {
-                            eprintln!("  -> Got user echo");
-                        }
-                        Event::Assistant { message, .. } => {
-                            eprintln!(
-                                "  -> Got assistant message (model={})",
-                                message.message.model
-                            );
-                            got_assistant = true;
-                            for block in &message.message.content {
-                                if let apiari_claude_sdk::ContentBlock::Text { text } = block {
-                                    eprintln!("  -> Text: {text}");
-                                    result_text.push_str(text);
-                                }
+                Ok(Some(event)) => match &event {
+                    Event::System(sys) => {
+                        eprintln!("  -> Got system message (subtype={})", sys.subtype);
+                        got_system = true;
+                    }
+                    Event::User(_) => {
+                        eprintln!("  -> Got user echo");
+                    }
+                    Event::Assistant { message, .. } => {
+                        eprintln!(
+                            "  -> Got assistant message (model={})",
+                            message.message.model
+                        );
+                        got_assistant = true;
+                        for block in &message.message.content {
+                            if let apiari_claude_sdk::ContentBlock::Text { text } = block {
+                                eprintln!("  -> Text: {text}");
+                                result_text.push_str(text);
                             }
                         }
-                        Event::Result(result) => {
-                            eprintln!("  -> Got result: subtype={}", result.subtype);
-                            got_result = true;
-                            break;
-                        }
-                        Event::RateLimit(_) => {
-                            eprintln!("  -> Got rate limit event");
-                        }
-                        Event::Stream { .. } => {
-                            eprintln!("  -> Got stream event");
-                        }
                     }
-                }
+                    Event::Result(result) => {
+                        eprintln!("  -> Got result: subtype={}", result.subtype);
+                        got_result = true;
+                        break;
+                    }
+                    Event::RateLimit(_) => {
+                        eprintln!("  -> Got rate limit event");
+                    }
+                    Event::Stream { .. } => {
+                        eprintln!("  -> Got stream event");
+                    }
+                },
                 Ok(None) => {
                     eprintln!("  -> EOF (session ended)");
                     break;

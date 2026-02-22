@@ -193,10 +193,7 @@ impl SessionOptions {
             }
         }
         if let Some(mode) = self.permission_mode {
-            args.extend([
-                "--permission-mode".to_owned(),
-                mode.as_str().to_owned(),
-            ]);
+            args.extend(["--permission-mode".to_owned(), mode.as_str().to_owned()]);
         }
         if self.dangerously_skip_permissions {
             args.push("--dangerously-skip-permissions".to_owned());
