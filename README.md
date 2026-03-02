@@ -64,4 +64,111 @@ async fn main() -> apiari_claude_sdk::Result<()> {
 
 ## Requirements
 
-The `claude` CLI must be installed and on `$PATH`, or provide a custom path via `ClaudeClient::with_cli_path`.
+- The `claude` CLI must be installed and on `$PATH` (or provide a custom path via `ClaudeClient::with_cli_path`)
+
+## Usage
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+apiari-claude-sdk.workspace = true
+```
+
+## Execution Model — Bidirectional Interactive
+
+The Claude SDK uses a **bidirectional** protocol. A single `Session` stays alive for the full conversation, and you can send messages and tool results at any time:
+
+```
+┌─────────┐       stdin (NDJSON)        ┌───────────┐
+│   SDK   │ ──── send_message() ──────► │  claude   │
+│         │ ──── send_tool_result() ──► │  CLI      │
+│         │                             │           │
+│         │ ◄──── next_event() ──────── │  (stdout) │
+└─────────┘       NDJSON stream         └───────────┘
+```
+
+### How a Conversation Works
+
+```rust
+// 1. Spawn a session — the subprocess stays alive
+let mut session = client.spawn(opts).await?;
+
+// 2. Send a message at any time
+session.send_message("Do something").await?;
+
+// 3. Read events — model may request tool execution
+while let Some(event) = session.next_event().await? {
+    match event {
+        Event::Assistant { tool_uses, .. } => {
+            // 4. Send tool results back mid-conversation
+            for tu in &tool_uses {
+                session.send_tool_result(&ToolResult {
+                    tool_use_id: tu.id.clone(),
+                    output: "tool output here".into(),
+                    is_error: false,
+                }).await?;
+            }
+        }
+        Event::Result(_) => break,
+        _ => {}
+    }
+}
+
+// 5. Or send another message — same session, continues the conversation
+session.send_message("Now do something else").await?;
+```
+
+### Key Properties
+
+- **Session stays alive** across multiple messages — one subprocess for the whole conversation.
+- **Input is always available** — you can `send_message()` or `send_tool_result()` at any point during the session.
+- **Tool results are required** — when the model emits `tool_use` blocks, it pauses and waits for your `send_tool_result()` before continuing.
+- **`interrupt()` pauses** the current operation, but the session remains open for further interaction.
+- **`close_stdin()`** signals EOF — the model finishes its current work and the session ends.
+
+### UI Implications
+
+- **Input can stay enabled** throughout the session — messages can be sent at any time.
+- **Events stream in real-time** via `next_event()` — render them as they arrive.
+- **Tool execution is your responsibility** — the SDK gives you `ToolUse` requests, you execute them and send results back. (The CLI can also handle tools internally depending on `SessionOptions`.)
+
+### Comparison with Codex SDK
+
+| | Claude SDK | Codex SDK |
+|---|---|---|
+| **Protocol** | Bidirectional (stdin + stdout) | Unidirectional (stdout only) |
+| **Session lifetime** | One subprocess for entire conversation | One subprocess per message |
+| **Mid-turn input** | Yes (`send_message`, `send_tool_result`) | No (stdin is `/dev/null`) |
+| **Tool execution** | SDK receives tool requests, sends results | CLI handles tools internally |
+| **Multi-turn chat** | Send multiple messages on same session | Resume with session ID for each message |
+| **Input availability** | Always enabled | Disabled during execution |
+
+## Architecture
+
+```
+src/
+  lib.rs          # Module declarations + re-exports
+  client.rs       # ClaudeClient (factory) + Session (live handle) + Event enum
+  session.rs      # SessionOptions (25+ fields) + PermissionMode + to_cli_args()
+  transport.rs    # NDJSON subprocess I/O (spawn, send, recv, kill, interrupt)
+  types.rs        # All Claude CLI stream-json message types
+  streaming.rs    # StreamAssembler (partial event -> complete blocks)
+  tools.rs        # ToolUse + ToolResult convenience types
+  error.rs        # SdkError enum + Result alias
+tests/
+  integration.rs  # Live CLI tests (#[ignore] by default)
+```
+
+### Message Types
+
+**SDK → CLI (stdin):**
+- `user` — text message or tool result
+
+**CLI → SDK (stdout):**
+- `system` — session metadata (emitted once at start)
+- `user` — echo of user turns
+- `assistant` — model response with content blocks (text, thinking, tool_use, tool_result)
+- `result` — final summary (session complete, includes cost/duration/session_id)
+- `stream_event` — raw API streaming events (when `include_partial_messages` is set)
+- `rate_limit_event` — rate limit status
