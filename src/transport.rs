@@ -55,10 +55,12 @@ impl Transport {
         // Caller-supplied arguments (session options, model, etc.).
         cmd.args(extra_args);
 
-        // Clear the CLAUDECODE environment variable to allow the SDK to spawn
-        // claude from within a Claude Code agent session (avoids "cannot be
-        // launched inside another Claude Code session" error).
+        // Clear Claude Code environment variables to allow the SDK to spawn
+        // claude from within a Claude Code agent session. CLAUDECODE blocks
+        // nested sessions, and CLAUDE_CODE_ENTRYPOINT can alter startup
+        // behavior (e.g. waiting for IPC handshake instead of streaming).
         cmd.env_remove("CLAUDECODE");
+        cmd.env_remove("CLAUDE_CODE_ENTRYPOINT");
 
         // Working directory.
         if let Some(dir) = working_dir {
@@ -74,6 +76,20 @@ impl Transport {
         cmd.stdin(std::process::Stdio::piped());
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
+
+        // On Unix, close inherited file descriptors > 2 and reset signal
+        // dispositions in the child before exec. This prevents leaked FDs from
+        // parent daemon processes from confusing the child.
+        #[cfg(unix)]
+        {
+            unsafe {
+                cmd.pre_exec(|| {
+                    // Reset SIGPIPE to default (parent daemon may have SIG_IGN).
+                    libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+                    Ok(())
+                });
+            }
+        }
 
         let mut child = cmd.spawn().map_err(SdkError::ProcessSpawn)?;
 
@@ -236,6 +252,9 @@ async fn drain_stderr(stderr: ChildStderr) -> String {
             Ok(_) => {
                 let line = buf.trim_end();
                 if !line.is_empty() {
+                    // Log via tracing AND eprintln so stderr is visible
+                    // even when no tracing subscriber is configured (e.g. daemon).
+                    eprintln!("[claude stderr] {}", line);
                     warn!(target: "claude_stderr", "{}", line);
                     accumulated.push_str(line);
                     accumulated.push('\n');

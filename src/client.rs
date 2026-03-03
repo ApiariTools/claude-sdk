@@ -238,6 +238,15 @@ impl Session {
         self.transport.wait_with_stderr().await
     }
 
+    /// Wait for the subprocess to exit and return any captured stderr.
+    ///
+    /// Unlike [`close`](Self::close), this does not consume the session.
+    /// Useful for retrieving stderr diagnostics after the session has finished.
+    pub async fn wait_for_stderr(&mut self) -> Result<Option<String>> {
+        let (_, stderr) = self.transport.wait_with_stderr().await?;
+        Ok(stderr)
+    }
+
     /// Kill the subprocess immediately.
     pub async fn kill(mut self) -> Result<()> {
         self.transport.kill().await

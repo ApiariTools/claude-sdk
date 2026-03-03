@@ -127,6 +127,84 @@ async fn raw_protocol_capture() {
     );
 }
 
+/// Test that mimics the daemon pattern: spawn claude inside tokio::spawn,
+/// send message, DON'T close stdin (daemon keeps stdin open for follow-ups).
+#[tokio::test]
+#[ignore]
+async fn daemon_pattern_no_close_stdin() {
+    // Run the actual work inside tokio::spawn, just like the daemon does
+    let handle = tokio::spawn(async {
+        daemon_pattern_inner().await
+    });
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        handle,
+    ).await;
+    match result {
+        Ok(Ok(count)) => {
+            eprintln!("tokio::spawn completed with {count} events");
+            assert!(count > 0, "Expected events");
+        }
+        Ok(Err(e)) => panic!("tokio::spawn task panicked: {e:?}"),
+        Err(_) => panic!("TIMED OUT — read_line stuck inside tokio::spawn"),
+    }
+}
+
+async fn daemon_pattern_inner() -> u64 {
+    // Mimic the daemon: ignore SIGPIPE before spawning child
+    unsafe { libc::signal(libc::SIGPIPE, libc::SIG_IGN); }
+
+    let client = ClaudeClient::new();
+
+    // Use the SAME working dir as the daemon to reproduce the issue
+    let work_dir = std::path::PathBuf::from("/Users/josh/Developer/apiari/.swarm/wt/hive-f906");
+
+    let opts = SessionOptions {
+        dangerously_skip_permissions: true,
+        include_partial_messages: true,
+        working_dir: if work_dir.exists() { Some(work_dir) } else { None },
+        ..Default::default()
+    };
+
+    let mut session = client
+        .spawn(opts)
+        .await
+        .expect("failed to spawn claude session");
+
+    // Send message (like daemon does)
+    session
+        .send_message("Say hello in exactly 3 words. Nothing else.")
+        .await
+        .expect("failed to send message");
+
+    // NOTE: daemon does NOT close stdin — it keeps it open for follow-up messages
+    // session.close_stdin();  // <-- intentionally omitted
+
+    let mut event_count = 0u64;
+
+    loop {
+        match session.next_event().await {
+            Ok(Some(event)) => {
+                event_count += 1;
+                eprintln!("  [spawn] event #{event_count}");
+                if event.is_result() {
+                    break;
+                }
+            }
+            Ok(None) => {
+                eprintln!("  [spawn] EOF after {event_count} events");
+                break;
+            }
+            Err(e) => {
+                eprintln!("  [spawn] ERROR after {event_count} events: {e}");
+                break;
+            }
+        }
+    }
+
+    event_count
+}
+
 /// SDK integration test.
 ///
 /// This test uses the `ClaudeClient` to spawn a session, send a message,
