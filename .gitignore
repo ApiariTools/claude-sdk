@@ -16,3 +16,6 @@ rust-toolchain
 .idea/
 .vscode/
 *.swp
+
+# Hive pipeline task artifacts
+.task/
