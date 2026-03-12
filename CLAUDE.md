@@ -86,7 +86,7 @@ Spawns: `claude --print --output-format stream-json --input-format stream-json -
 |-------|----------------------|
 | hive | Coordinator spawns sessions for `chat` and `plan` commands. Falls back to offline mode if CLI unavailable. |
 | buzz | Does not use (polls external APIs directly) |
-| swarm | Does not use (launches `claude` CLI directly via tmux) |
+| swarm | Does not use (launches `claude` CLI directly as daemon subprocess) |
 | keeper | Does not use (read-only dashboard) |
 
 ## Error Handling
