@@ -133,13 +133,8 @@ async fn raw_protocol_capture() {
 #[ignore]
 async fn daemon_pattern_no_close_stdin() {
     // Run the actual work inside tokio::spawn, just like the daemon does
-    let handle = tokio::spawn(async {
-        daemon_pattern_inner().await
-    });
-    let result = tokio::time::timeout(
-        std::time::Duration::from_secs(30),
-        handle,
-    ).await;
+    let handle = tokio::spawn(async { daemon_pattern_inner().await });
+    let result = tokio::time::timeout(std::time::Duration::from_secs(30), handle).await;
     match result {
         Ok(Ok(count)) => {
             eprintln!("tokio::spawn completed with {count} events");
@@ -152,7 +147,9 @@ async fn daemon_pattern_no_close_stdin() {
 
 async fn daemon_pattern_inner() -> u64 {
     // Mimic the daemon: ignore SIGPIPE before spawning child
-    unsafe { libc::signal(libc::SIGPIPE, libc::SIG_IGN); }
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_IGN);
+    }
 
     let client = ClaudeClient::new();
 
@@ -162,7 +159,11 @@ async fn daemon_pattern_inner() -> u64 {
     let opts = SessionOptions {
         dangerously_skip_permissions: true,
         include_partial_messages: true,
-        working_dir: if work_dir.exists() { Some(work_dir) } else { None },
+        working_dir: if work_dir.exists() {
+            Some(work_dir)
+        } else {
+            None
+        },
         ..Default::default()
     };
 
