@@ -14,35 +14,19 @@ jobs:
     name: Check & Test
     runs-on: ubuntu-latest
     steps:
-      # apiari-claude-sdk is part of a multi-repo Cargo workspace. Reconstruct the layout:
-      #   workspace/
-      #     Cargo.toml          (workspace root — generated below)
-      #     hive/               (hive)
-      #     common/             (apiari-common)
-      #     claude-sdk/         (this repo)
+      # apiari-claude-sdk uses workspace inheritance, so we reconstruct a
+      # minimal single-member workspace that satisfies its Cargo.toml.
       - name: Checkout apiari-claude-sdk
         uses: actions/checkout@v4
         with:
           path: claude-sdk
-
-      - name: Checkout hive
-        uses: actions/checkout@v4
-        with:
-          repository: ApiariTools/hive
-          path: hive
-
-      - name: Checkout apiari-common
-        uses: actions/checkout@v4
-        with:
-          repository: ApiariTools/apiari-common
-          path: common
 
       - name: Create workspace root
         run: |
           cat > Cargo.toml << 'TOML'
           [workspace]
           resolver = "3"
-          members = ["hive", "common", "claude-sdk"]
+          members = ["claude-sdk"]
 
           [workspace.package]
           edition = "2024"
@@ -52,22 +36,11 @@ jobs:
           serde = { version = "1", features = ["derive"] }
           serde_json = "1"
           tokio = { version = "1", features = ["full"] }
-          clap = { version = "4", features = ["derive"] }
-          color-eyre = "0.6"
           chrono = { version = "0.4", features = ["serde"] }
           uuid = { version = "1", features = ["v4"] }
           thiserror = "2"
           tracing = "0.1"
           libc = "0.2"
-          ratatui = "0.29"
-          crossterm = "0.28"
-          apiari-common = { path = "common" }
-          apiari-claude-sdk = { path = "claude-sdk" }
-
-          [profile.release]
-          lto = true
-          strip = true
-          codegen-units = 1
           TOML
 
       - uses: dtolnay/rust-toolchain@stable
