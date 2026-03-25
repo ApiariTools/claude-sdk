@@ -15,7 +15,7 @@ cargo test -p apiari-claude-sdk -- --ignored  # Integration tests (requires live
 2. **Only modify files within this repo (`claude-sdk/`).** Do not touch other repos in the workspace (e.g., `hive/`, `common/`, `swarm/`).
 3. **When done, create a PR:**
    ```bash
-   gh pr create --repo ApiariTools/apiari-claude-sdk --title "..." --body "..."
+   gh pr create --repo ApiariTools/apiari-claude-sdk --title "..." --body "..." --reviewer @copilot
    ```
 4. **Do not run `cargo install` or modify system state.** No global installs, no modifying dotfiles, no system-level changes.
 
