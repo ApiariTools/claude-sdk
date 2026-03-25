@@ -1,101 +1,31 @@
-# apiari-claude-sdk
+# Worker Profile
 
-Rust SDK wrapping the Claude Code CLI via NDJSON stdin/stdout.
+## Rules
+1. You are working in a git worktree on a `swarm/*` branch. Never commit to main.
+2. Only modify files within this repository.
+3. When done, create a PR with `gh pr create --reviewer @copilot`.
+4. Do not run `cargo install` or modify system state.
+5. Plan and execute in one go — do not pause for confirmation.
 
-## Quick Reference
+## Scope Discipline
+- ONLY make changes described in the task. Do not refactor, reorganize, or improve unrelated code.
+- If `.task/TASK.md` has an **Anti-Goals** section, treat every item as a hard constraint — do NOT do those things.
+- If `.task/PLAN.md` exists, follow its steps exactly. Do not add extra steps.
+- Do not modify files outside the plan unless strictly required to complete a planned step.
+- A focused PR that does one thing well is better than a large PR that "also fixes" other things.
+- When in doubt about whether something is in scope, it isn't. Leave it alone.
 
-```bash
-cargo test -p apiari-claude-sdk           # Unit tests (6 + 3 doctests)
-cargo test -p apiari-claude-sdk -- --ignored  # Integration tests (requires live `claude` CLI)
-```
+## Task Artifacts
+If a `.task/` directory exists, read ALL files before writing any code:
+- `.task/TASK.md` — Task definition with scope, acceptance criteria, and anti-goals
+- `.task/CONTEXT.md` — Relevant codebase files and patterns
+- `.task/PLAN.md` — Step-by-step implementation plan (follow exactly)
+- `.task/PROGRESS.md` — Update this as you complete each step
 
-## Swarm Worker Rules
-
-1. **You are working in a git worktree.** Always create a new branch (`swarm/*`), never commit directly to `main`.
-2. **Only modify files within this repo (`claude-sdk/`).** Do not touch other repos in the workspace (e.g., `hive/`, `common/`, `swarm/`).
-3. **When done, create a PR:**
-   ```bash
-   gh pr create --repo ApiariTools/apiari-claude-sdk --title "..." --body "..."
-   ```
-4. **Do not run `cargo install` or modify system state.** No global installs, no modifying dotfiles, no system-level changes.
+**Do NOT commit `.task/` to git.** These are pipeline artifacts, not source code.
 
 ## Git Workflow
-
-- You are working in a swarm worktree on a `swarm/*` branch. Stay on this branch.
-- NEVER push to or merge into `main` directly.
-- NEVER run `git push origin main` or `git checkout main`.
-- When done, push your branch and open a PR. Swarm will handle merging.
-
-## Architecture
-
-```
-src/
-  lib.rs          # Module declarations + re-exports
-  client.rs       # ClaudeClient (factory) + Session (live handle) + Event enum
-  session.rs      # SessionOptions (25+ fields) + PermissionMode + to_cli_args()
-  transport.rs    # NDJSON subprocess I/O (spawn, send, recv, kill, interrupt)
-  types.rs        # All Claude CLI stream-json message types
-  streaming.rs    # StreamAssembler (partial event -> complete blocks)
-  tools.rs        # ToolUse + ToolResult convenience types
-  error.rs        # SdkError enum + Result alias
-tests/
-  integration.rs  # Live CLI tests (#[ignore] by default)
-```
-
-## Protocol
-
-Spawns: `claude --print --output-format stream-json --input-format stream-json --verbose [opts...]`
-
-**Important**: Transport removes the `CLAUDECODE` env var before spawning to avoid nested session blocking.
-
-### Message Flow
-
-1. SDK writes `InputMessage` as NDJSON to subprocess stdin
-2. Subprocess writes `Message` variants as NDJSON to stdout
-3. SDK reads and dispatches as `Event` variants
-
-### Message Types (stdin -> claude)
-
-- `user` with text content
-- `tool_result` with tool_use_id, output, is_error
-
-### Message Types (claude -> stdout)
-
-- `system` — session metadata (session_id, tools, model)
-- `user` — echo of user turns
-- `assistant` — model response with content blocks (text, thinking, tool_use, tool_result)
-- `result` — final message (session complete, includes cost/duration)
-- `rate_limit_event` — rate limit status
-
-### Key Type Details
-
-- `AssistantMessage` has a nested `message: AssistantMessageContent` (not flat)
-- `ContentBlock` is `#[serde(tag = "type")]` with variants: text, thinking, tool_use, tool_result
-- `Message` is `#[serde(tag = "type")]` with snake_case renaming
-
-## Design Rules
-
-- **Wrap CLI, not API.** This SDK spawns the `claude` binary. It does NOT call the Anthropic API directly. The CLI handles auth, tool execution, file access, and permissions.
-- **Forward-compatible parsing.** Unknown message types are logged and skipped (not errors). Fields use `#[serde(default)]` liberally.
-- **Async throughout.** All I/O uses tokio. `Transport` runs a background task to drain stderr.
-- **No apiari-common dependency.** This crate is standalone.
-
-## Integration Map
-
-| Crate | How it uses claude-sdk |
-|-------|----------------------|
-| hive | Coordinator spawns sessions for `chat` and `plan` commands. Falls back to offline mode if CLI unavailable. |
-| buzz | Does not use (polls external APIs directly) |
-| swarm | Does not use (launches `claude` CLI directly as daemon subprocess) |
-| keeper | Does not use (read-only dashboard) |
-
-## Error Handling
-
-`SdkError` variants:
-- `ProcessSpawn` — claude binary not found or failed to start
-- `ProcessDied { exit_code, stderr }` — subprocess exited unexpectedly
-- `InvalidJson` — NDJSON parse failure
-- `ProtocolError` — unexpected protocol state
-- `Timeout` — operation timed out
-- `Io` — underlying I/O error
-- `NotConnected` — session already finished
+- Stay on your `swarm/*` branch
+- NEVER push to or merge into `main`
+- Commit early and often
+- Push your branch and open a PR when done
