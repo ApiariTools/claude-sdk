@@ -2,29 +2,18 @@
 
 Rust SDK wrapping the Claude Code CLI via NDJSON stdin/stdout.
 
+## Rules
+
+1. You are working in a git worktree on a `swarm/*` branch. Never commit to main.
+2. Only modify files within this repository.
+3. Do not run `cargo install` or modify system state.
+
 ## Quick Reference
 
 ```bash
 cargo test -p apiari-claude-sdk           # Unit tests (6 + 3 doctests)
 cargo test -p apiari-claude-sdk -- --ignored  # Integration tests (requires live `claude` CLI)
 ```
-
-## Swarm Worker Rules
-
-1. **You are working in a git worktree.** Always create a new branch (`swarm/*`), never commit directly to `main`.
-2. **Only modify files within this repo (`claude-sdk/`).** Do not touch other repos in the workspace (e.g., `hive/`, `common/`, `swarm/`).
-3. **When done, create a PR:**
-   ```bash
-   gh pr create --repo ApiariTools/apiari-claude-sdk --title "..." --body "..." --reviewer @copilot
-   ```
-4. **Do not run `cargo install` or modify system state.** No global installs, no modifying dotfiles, no system-level changes.
-
-## Git Workflow
-
-- You are working in a swarm worktree on a `swarm/*` branch. Stay on this branch.
-- NEVER push to or merge into `main` directly.
-- NEVER run `git push origin main` or `git checkout main`.
-- When done, push your branch and open a PR. Swarm will handle merging.
 
 ## Architecture
 
@@ -79,15 +68,6 @@ Spawns: `claude --print --output-format stream-json --input-format stream-json -
 - **Forward-compatible parsing.** Unknown message types are logged and skipped (not errors). Fields use `#[serde(default)]` liberally.
 - **Async throughout.** All I/O uses tokio. `Transport` runs a background task to drain stderr.
 - **No apiari-common dependency.** This crate is standalone.
-
-## Integration Map
-
-| Crate | How it uses claude-sdk |
-|-------|----------------------|
-| hive | Coordinator spawns sessions for `chat` and `plan` commands. Falls back to offline mode if CLI unavailable. |
-| buzz | Does not use (polls external APIs directly) |
-| swarm | Does not use (launches `claude` CLI directly as daemon subprocess) |
-| keeper | Does not use (read-only dashboard) |
 
 ## Error Handling
 
